@@ -1,0 +1,30 @@
+{
+  "dataset_size": 40,
+  "class_counts": {
+    "Phishing": 20,
+    "Safe": 20
+  },
+  "holdout_size": 10,
+  "accuracy": 1.0,
+  "roc_auc": 1.0,
+  "confusion_matrix_labels": [
+    "Phishing",
+    "Safe"
+  ],
+  "confusion_matrix": [
+    [
+      5,
+      0
+    ],
+    [
+      0,
+      5
+    ]
+  ],
+  "cross_validation": {
+    "folds": 5,
+    "accuracy_mean": 0.975,
+    "accuracy_std": 0.05,
+    "f1_macro_mean": 0.9746
+  }
+}
