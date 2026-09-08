@@ -11,7 +11,7 @@ A Scikit-learn project that classifies email text as **Phishing** or **Safe**.
 - Five-fold stratified cross-validation with accuracy variation and macro-F1
 - JSON analysis output saved as `analysis_report.json`
 - Single-email prediction with phishing probability
-- Streamlit review interface with a **Start Scan** button
+- Streamlit review interface with a **Start Scan** button, visible high-contrast results, confidence bands, risk level, recommended action, and evidence table
 
 ## Run
 

@@ -136,6 +136,37 @@ def phishing_probability(model: Pipeline, word_vectorizer: TfidfVectorizer, char
     return probabilities[:, phishing_index]
 
 
+def expert_assessment(text: str, probability: float) -> tuple[str, str, str, list[dict[str, str]]]:
+    """Combine model confidence with interpretable signals for an analyst-facing decision."""
+    features = extract_url_features([text]).toarray()[0]
+    evidence = []
+    if features[0] > 0:
+        evidence.append({"Category": "URL analysis", "Evidence": f"{int(features[0])} URL(s) found", "Severity": "High" if features[4] or features[7] else "Medium"})
+    if features[4] > 0:
+        evidence.append({"Category": "URL analysis", "Evidence": "IP-address URL", "Severity": "Critical"})
+    if features[7] > 0:
+        evidence.append({"Category": "URL analysis", "Evidence": "High-risk domain suffix", "Severity": "High"})
+    if features[9] > 0:
+        evidence.append({"Category": "Social engineering", "Evidence": "Urgency or account-verification wording", "Severity": "High"})
+    if features[10] > 0:
+        evidence.append({"Category": "Requested action", "Evidence": "Login, payment, reset, or claim request", "Severity": "High"})
+    if features[13] > 0:
+        evidence.append({"Category": "Sensitive data", "Evidence": "Credential or financial-information language", "Severity": "Critical"})
+    if probability >= 0.85:
+        confidence = "Very high confidence"
+    elif probability >= 0.65 or probability <= 0.35:
+        confidence = "High confidence"
+    else:
+        confidence = "Moderate confidence"
+    if probability >= 0.5:
+        level = "Critical" if any(item["Severity"] == "Critical" for item in evidence) else "High"
+        action = "Do not click, reply, or provide information. Report the message and verify the sender through a trusted channel."
+    else:
+        level = "Low"
+        action = "No strong phishing pattern was detected. Still verify unexpected requests through a trusted channel."
+    return confidence, level, action, evidence
+
+
 def cross_validation_summary(texts: list[str], labels: list[str]) -> dict[str, float | int]:
     """Evaluate complete feature fitting inside each stratified fold."""
     folds = min(5, min(labels.count("Phishing"), labels.count("Safe")))

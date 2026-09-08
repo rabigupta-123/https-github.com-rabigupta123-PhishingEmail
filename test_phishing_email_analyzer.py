@@ -4,6 +4,7 @@ from pathlib import Path
 from phishing_email_analyzer import (
     cross_validation_summary,
     extract_url_features,
+    expert_assessment,
     fit_full_model,
     phishing_probability,
     predict,
@@ -47,6 +48,15 @@ class DetectorTests(unittest.TestCase):
         self.assertEqual(summary["folds"], 5)
         self.assertGreaterEqual(summary["accuracy_mean"], 0.8)
         self.assertGreaterEqual(summary["f1_macro_mean"], 0.8)
+
+    def test_expert_assessment_explains_high_risk_message(self):
+        confidence, risk_level, action, evidence = expert_assessment(
+            "Urgent: verify your password at http://192.168.1.50/login", 0.95
+        )
+        self.assertEqual(confidence, "Very high confidence")
+        self.assertEqual(risk_level, "Critical")
+        self.assertIn("Do not click", action)
+        self.assertGreaterEqual(len(evidence), 3)
 
 
 if __name__ == "__main__":
