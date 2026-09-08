@@ -29,13 +29,20 @@ st.markdown(
     .stApp { background: #f4f7f9; color: #102a43; }
     .stApp h1, .stApp h2, .stApp h3, .stApp p, .stApp label,
     .stApp [data-testid="stMetricLabel"], .stApp [data-testid="stMetricValue"],
-    .stApp [data-testid="stCaptionContainer"] { color: #102a43 !important; }
+    .stApp [data-testid="stCaptionContainer"], .stApp summary,
+    .stApp [data-testid="stExpander"] p, .stApp [data-testid="stDataFrame"] * {
+        color: #102a43 !important;
+    }
     .stApp [data-testid="stAlert"] p, .stApp [data-baseweb="notification"] p { color: #102a43 !important; }
-    .stApp [data-testid="stDataFrame"] { color: #102a43 !important; }
+    .stApp textarea { color: #102a43 !important; background: #ffffff !important; }
+    .stApp textarea::placeholder { color: #526879 !important; opacity: 1; }
+    .stApp [data-testid="stMarkdownContainer"] p { color: #102a43 !important; }
+    .stApp [data-testid="stBaseButton-primary"], .stApp [data-testid="stBaseButton-primary"] p { color: #ffffff !important; }
     .block-container { max-width: 1180px; padding-top: 2.5rem; }
     .hero { background: #102a43; color: #f7fbff; padding: 2rem 2.2rem; border-radius: 14px; margin-bottom: 1.4rem; }
     .hero h1 { margin: 0; font-size: 2.4rem; letter-spacing: 0; }
-    .hero p { color: #c9d8e6 !important; margin: .55rem 0 0; font-size: 1.05rem; }
+    .hero p { display: block !important; color: #c9d8e6 !important; margin: .55rem 0 0; font-size: 1.05rem; }
+    .hero h1 { color: #f7fbff !important; }
     .result-safe { border-left: 7px solid #16825d; background: #e8f6ef; padding: 1.1rem 1.3rem; border-radius: 8px; }
     .result-phishing { border-left: 7px solid #c13b3b; background: #fff0ef; padding: 1.1rem 1.3rem; border-radius: 8px; }
         .signal { background: #fff; border: 1px solid #dbe4ea; border-radius: 7px; padding: .65rem .8rem; margin: .35rem 0; }
@@ -80,6 +87,20 @@ def risk_signals(text: str) -> list[str]:
     return signals or ["No strong hand-built risk signal detected"]
 
 
+def message_profile(text: str) -> dict[str, str]:
+    """Return analyst-friendly facts that complement the classifier score."""
+    features = extract_url_features([text]).toarray()[0]
+    return {
+        "Characters": f"{len(text):,}",
+        "Words": f"{len(text.split()):,}",
+        "URLs found": str(int(features[0])),
+        "Unique domains": str(int(features[6])),
+        "Email addresses": str(int(features[8])),
+        "Urgency indicators": str(int(features[9])),
+        "Sensitive-action indicators": str(int(features[10])),
+    }
+
+
 left, right = st.columns([1.55, 1], gap="large")
 with left:
     st.subheader("Email to scan")
@@ -95,9 +116,10 @@ with left:
 with right:
     st.subheader("Model status")
     texts, labels = load_data()
+    cv_summary = cross_validation_summary(texts, labels)
     st.metric("Training emails", len(texts))
     st.metric("Phishing / Safe", f"{labels.count('Phishing')} / {labels.count('Safe')}")
-    st.metric("Cross-validation accuracy", f"{cross_validation_summary(texts, labels)['accuracy_mean']:.1%}")
+    st.metric("Cross-validation accuracy", f"{cv_summary['accuracy_mean']:.1%}")
 
 if scan_clicked:
     if not email_text.strip():
@@ -119,6 +141,15 @@ if scan_clicked:
         metric_c.metric("Evidence signals", len(evidence))
         st.progress(probability, text=f"Model score: {probability:.1%} phishing likelihood")
         st.info(f"Recommended action: {action}")
+        confidence_basis = (
+            f"The model scored this message at {probability:.1%} phishing likelihood. "
+            f"The confidence band is {confidence.lower()} because the score is "
+            f"{'well above' if probability >= 0.5 else 'well below'} the decision threshold. "
+            f"The model averages {cv_summary['accuracy_mean']:.1%} accuracy across "
+            f"{cv_summary['folds']} stratified validation folds."
+        )
+        st.subheader("Confidence interpretation")
+        st.write(confidence_basis)
         st.subheader("Expert evidence review")
         if evidence:
             st.dataframe(evidence, use_container_width=True, hide_index=True)
@@ -127,6 +158,17 @@ if scan_clicked:
         with st.expander("All detected indicators"):
             for signal in signals:
                 st.markdown(f"- {signal}")
+        with st.expander("Deep message analysis"):
+            st.dataframe(
+                [{"Metric": name, "Value": value} for name, value in message_profile(email_text).items()],
+                use_container_width=True,
+                hide_index=True,
+            )
+            st.caption(
+                "This scan analyzes the supplied text and extracted URL patterns only. "
+                "It does not verify sender identity, domain ownership, redirects, attachments, "
+                "headers, or live reputation data."
+            )
 
 st.divider()
 st.caption("Educational analysis only. Treat the probability as a ranking signal, not a guarantee, and never open a suspicious link to test it.")
