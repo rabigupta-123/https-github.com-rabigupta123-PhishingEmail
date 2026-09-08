@@ -6,12 +6,12 @@ A Scikit-learn project that classifies email text as **Phishing** or **Safe**.
 
 - Word and character TF-IDF features for email text, including misspellings and obfuscated wording
 - URL count, URL length, IP-address URL, `@` URL, domain diversity, high-risk TLD, sender-address, urgency, sensitive-action, credential, punctuation, and length features
-- Logistic Regression classifier with class balancing
+- Class-balanced Logistic Regression with sigmoid-calibrated probability estimates
 - Stratified holdout accuracy, per-class precision/recall/F1, ROC-AUC, and confusion matrix
 - Five-fold stratified cross-validation with accuracy variation and macro-F1
 - JSON analysis output saved as `analysis_report.json`
-- Single-email prediction with phishing probability
-- Streamlit review interface with a **Start Scan** button, high-contrast results, confidence interpretation tied to validation, risk level, recommended action, evidence table, and deep message profile
+- Single-email prediction with calibrated phishing likelihood and confidence level
+- Streamlit review interface with a **Start Scan** button, high-contrast results, calibrated confidence interpretation tied to validation, risk level, recommended action, evidence table, deep message profile, and scan history
 
 ## Run
 

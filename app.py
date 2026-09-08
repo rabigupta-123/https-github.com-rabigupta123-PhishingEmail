@@ -1,6 +1,7 @@
 """Streamlit review interface for the phishing email detector."""
 from pathlib import Path
 import sys
+from datetime import datetime
 
 import streamlit as st
 
@@ -50,6 +51,9 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+if "scan_history" not in st.session_state:
+    st.session_state.scan_history = []
 
 st.markdown(
     '<div class="hero"><h1>PhishLens</h1><div class="hero-subtitle">Inspect suspicious email text using language, URL, and social-engineering signals.</div></div>',
@@ -120,11 +124,12 @@ with right:
     st.metric("Training emails", len(texts))
     st.metric("Phishing / Safe", f"{labels.count('Phishing')} / {labels.count('Safe')}")
     st.metric("Cross-validation accuracy", f"{cv_summary['accuracy_mean']:.1%}")
+    st.caption("Probability method: sigmoid-calibrated classifier, 3-fold internal calibration")
 
 if not scan_clicked:
     st.subheader("Scan result")
     empty_a, empty_b, empty_c = st.columns(3)
-    empty_a.metric("Phishing probability", "0.0%")
+    empty_a.metric("Calibrated likelihood", "0.0%")
     empty_b.metric("Confidence level", "Not scanned")
     empty_c.metric("Evidence signals", "0")
     st.caption("No email has been scanned yet. Paste content above and click Start Scan to generate a real analysis.")
@@ -139,19 +144,27 @@ if scan_clicked:
             probability = float(phishing_probability(model, word_vectorizer, char_vectorizer, scaler, [email_text])[0])
             signals = risk_signals(email_text)
         confidence, risk_level, action, evidence = expert_assessment(email_text, probability)
+        scan_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        st.session_state.scan_history.insert(0, {
+            "Time": scan_time,
+            "Result": prediction,
+            "Likelihood": f"{probability:.1%}",
+            "Confidence": confidence,
+            "Risk": risk_level,
+        })
         if prediction == "Phishing":
             st.error(f"PHISHING DETECTED | {risk_level} RISK")
         else:
             st.success("NO STRONG PHISHING PATTERN DETECTED")
         metric_a, metric_b, metric_c = st.columns(3)
-        metric_a.metric("Phishing probability", f"{probability:.1%}")
-        metric_b.metric("Assessment confidence", confidence)
+        metric_a.metric("Calibrated likelihood", f"{probability:.1%}")
+        metric_b.metric("Confidence level", confidence)
         metric_c.metric("Evidence signals", len(evidence))
         st.progress(probability, text=f"Model score: {probability:.1%} phishing likelihood")
         st.info(f"Recommended action: {action}")
         confidence_basis = (
-            f"The model scored this message at {probability:.1%} phishing likelihood. "
-            f"The confidence band is {confidence.lower()} because the score is "
+            f"The calibrated model estimates a {probability:.1%} phishing likelihood. "
+            f"The confidence level is {confidence.lower()} because the score is "
             f"{'well above' if probability >= 0.5 else 'well below'} the decision threshold. "
             f"The model averages {cv_summary['accuracy_mean']:.1%} accuracy across "
             f"{cv_summary['folds']} stratified validation folds."
@@ -177,6 +190,8 @@ if scan_clicked:
                 "It does not verify sender identity, domain ownership, redirects, attachments, "
                 "headers, or live reputation data."
             )
+            st.subheader("Scan history")
+            st.dataframe(st.session_state.scan_history, use_container_width=True, hide_index=True)
 
 st.divider()
 st.caption("Educational analysis only. Treat the probability as a ranking signal, not a guarantee, and never open a suspicious link to test it.")

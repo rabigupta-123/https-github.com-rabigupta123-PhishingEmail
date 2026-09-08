@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.sparse import csr_matrix, hstack
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, classification_report, confusion_matrix, roc_auc_score
 from sklearn.model_selection import StratifiedKFold, train_test_split
@@ -90,9 +91,7 @@ def train_model(texts: list[str], labels: list[str]) -> tuple[Pipeline, TfidfVec
         char_vectorizer.transform(test_texts),
         scaler.transform(extract_url_features(test_texts)),
     ]).tocsr()
-    model = Pipeline([
-        ("classifier", LogisticRegression(max_iter=1500, class_weight="balanced", random_state=42)),
-    ])
+    model = make_classifier()
     model.fit(train_features, train_labels)
     predictions = model.predict(test_features)
     return model, word_vectorizer, char_vectorizer, scaler, accuracy_score(test_labels, predictions), np.asarray(test_labels), np.asarray(predictions), test_texts
@@ -108,11 +107,21 @@ def fit_full_model(texts: list[str], labels: list[str]) -> tuple[Pipeline, Tfidf
         char_vectorizer.fit_transform(texts),
         scaler.fit_transform(extract_url_features(texts)),
     ]).tocsr()
-    model = Pipeline([
-        ("classifier", LogisticRegression(max_iter=1500, class_weight="balanced", random_state=42)),
-    ])
+    model = make_classifier()
     model.fit(features, labels)
     return model, word_vectorizer, char_vectorizer, scaler
+
+
+def make_classifier() -> Pipeline:
+    """Use calibrated probabilities so the score is a probability estimate, not a raw margin."""
+    return Pipeline([
+        ("classifier", CalibratedClassifierCV(
+            estimator=LogisticRegression(max_iter=1500, class_weight="balanced", random_state=42),
+            method="sigmoid",
+            cv=3,
+            n_jobs=1,
+        )),
+    ])
 
 
 def predict(model: Pipeline, word_vectorizer: TfidfVectorizer, char_vectorizer: TfidfVectorizer, scaler: StandardScaler, texts: list[str]) -> np.ndarray:
