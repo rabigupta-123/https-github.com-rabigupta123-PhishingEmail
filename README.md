@@ -11,6 +11,7 @@ A Scikit-learn project that classifies email text as **Phishing** or **Safe**.
 - Five-fold stratified cross-validation with accuracy variation and macro-F1
 - JSON analysis output saved as `analysis_report.json`
 - Single-email prediction with phishing probability
+- Streamlit review interface with a **Start Scan** button
 
 ## Run
 
@@ -20,7 +21,10 @@ py -m pip install -r requirements.txt
 py phishing_email_analyzer.py
 py phishing_email_analyzer.py --text "Urgent: verify your account at http://login.example.com"
 py -m unittest discover -v
+streamlit run app.py
 ```
+
+Open the local Streamlit URL, paste an email into the analyzer, and click **Start Scan**. The interface displays the predicted class, phishing probability, and the hand-built risk signals that contributed context.
 
 The CSV must contain `label` and `text` columns. Labels can be `Phishing`, `Safe`, or `Legitimate`.
 
