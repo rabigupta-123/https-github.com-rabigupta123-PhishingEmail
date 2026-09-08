@@ -41,7 +41,7 @@ st.markdown(
     .block-container { max-width: 1180px; padding-top: 2.5rem; }
     .hero { background: #102a43; color: #f7fbff; padding: 2rem 2.2rem; border-radius: 14px; margin-bottom: 1.4rem; }
     .hero h1 { margin: 0; font-size: 2.4rem; letter-spacing: 0; }
-    .hero p { display: block !important; color: #c9d8e6 !important; margin: .55rem 0 0; font-size: 1.05rem; }
+    .hero-subtitle { display: block !important; visibility: visible !important; opacity: 1 !important; color: #d7e6f2 !important; margin: .65rem 0 0; font-size: 1.05rem; line-height: 1.5; }
     .hero h1 { color: #f7fbff !important; }
     .result-safe { border-left: 7px solid #16825d; background: #e8f6ef; padding: 1.1rem 1.3rem; border-radius: 8px; }
     .result-phishing { border-left: 7px solid #c13b3b; background: #fff0ef; padding: 1.1rem 1.3rem; border-radius: 8px; }
@@ -52,7 +52,7 @@ st.markdown(
 )
 
 st.markdown(
-    '<div class="hero"><h1>PhishLens</h1><p>Inspect suspicious email text using language, URL, and social-engineering signals.</p></div>',
+    '<div class="hero"><h1>PhishLens</h1><div class="hero-subtitle">Inspect suspicious email text using language, URL, and social-engineering signals.</div></div>',
     unsafe_allow_html=True,
 )
 
@@ -120,6 +120,14 @@ with right:
     st.metric("Training emails", len(texts))
     st.metric("Phishing / Safe", f"{labels.count('Phishing')} / {labels.count('Safe')}")
     st.metric("Cross-validation accuracy", f"{cv_summary['accuracy_mean']:.1%}")
+
+if not scan_clicked:
+    st.subheader("Scan result")
+    empty_a, empty_b, empty_c = st.columns(3)
+    empty_a.metric("Phishing probability", "0.0%")
+    empty_b.metric("Confidence level", "Not scanned")
+    empty_c.metric("Evidence signals", "0")
+    st.caption("No email has been scanned yet. Paste content above and click Start Scan to generate a real analysis.")
 
 if scan_clicked:
     if not email_text.strip():
