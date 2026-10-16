@@ -6,9 +6,11 @@ from phishing_email_analyzer import (
     extract_url_features,
     expert_assessment,
     fit_full_model,
+    make_classifier,
     phishing_probability,
     predict,
     read_dataset,
+    train_model,
 )
 
 
@@ -32,6 +34,27 @@ class DetectorTests(unittest.TestCase):
         self.assertGreater(features[0, 0], 0)
         self.assertGreater(features[0, 4], 0)
 
+    def test_url_features_extended_signals(self):
+        features = extract_url_features([
+            "Dear customer! Claim your prize now at http://user:pass@claim-win.xyz/login immediately! Enter your banking information."
+        ]).toarray()[0]
+        # URL count
+        self.assertGreater(features[0], 0)
+        # @ in url
+        self.assertGreater(features[3], 0)
+        # high risk domain suffix (.xyz)
+        self.assertGreater(features[7], 0)
+        # urgent words
+        self.assertGreater(features[9], 0)
+        # sensitive action words
+        self.assertGreater(features[10], 0)
+        # dear customer
+        self.assertEqual(features[11], 1.0)
+        # exclamation count >= 2
+        self.assertEqual(features[12], 1.0)
+        # banking info
+        self.assertEqual(features[13], 1.0)
+
     def test_model_predicts_both_representative_classes(self):
         messages = [
             "Urgent: verify your password at http://secure-login.example.com immediately.",
@@ -42,6 +65,12 @@ class DetectorTests(unittest.TestCase):
         self.assertEqual(predictions.tolist(), ["Phishing", "Safe"])
         self.assertGreater(probabilities[0], 0.5)
         self.assertLess(probabilities[1], 0.5)
+
+    def test_phishing_probability_bounds(self):
+        probabilities = phishing_probability(
+            self.model, self.word_vectorizer, self.char_vectorizer, self.scaler, self.texts
+        )
+        self.assertTrue(all(0.0 <= p <= 1.0 for p in probabilities))
 
     def test_cross_validation_is_reproducible_and_high(self):
         summary = cross_validation_summary(self.texts, self.labels)
@@ -57,6 +86,29 @@ class DetectorTests(unittest.TestCase):
         self.assertEqual(risk_level, "Critical")
         self.assertIn("Do not click", action)
         self.assertGreaterEqual(len(evidence), 3)
+
+    def test_expert_assessment_safe_message(self):
+        confidence, risk_level, action, evidence = expert_assessment(
+            "Weekly team meeting is tomorrow morning.", 0.05
+        )
+        self.assertEqual(confidence, "High confidence")
+        self.assertEqual(risk_level, "Low")
+        self.assertIn("No strong phishing pattern", action)
+        self.assertEqual(len(evidence), 0)
+
+    def test_train_model_returns_valid_metrics(self):
+        model, w_vec, c_vec, scaler, acc, actual, pred, test_texts = train_model(self.texts, self.labels)
+        self.assertGreaterEqual(acc, 0.8)
+        self.assertEqual(len(actual), len(pred))
+        self.assertEqual(len(test_texts), len(actual))
+
+    def test_make_classifier_structure(self):
+        pipeline = make_classifier()
+        self.assertIn("classifier", pipeline.named_steps)
+
+    def test_read_dataset_raises_for_missing_file(self):
+        with self.assertRaises(FileNotFoundError):
+            read_dataset(PROJECT_DIR / "non_existent_file.csv")
 
 
 if __name__ == "__main__":
